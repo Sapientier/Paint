@@ -23,6 +23,11 @@ void CFigure::setColor(float r, float g, float b)
 	mColor[2] = b;
 }
 
+void CFigure::setBox(int a)
+{
+	box = a;
+}
+
 int CFigure::getType()
 {
 	return mType;
@@ -36,4 +41,9 @@ float* CFigure::getVertex(int id)
 float* CFigure::getColor()
 {
 	return mColor;
+}
+
+bool CFigure::getBox()
+{
+	return box;
 }

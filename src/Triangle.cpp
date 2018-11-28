@@ -3,9 +3,9 @@
 
 CTriangle::CTriangle() 
 {
-	mVertices = new float*[2];
-	for (int i = 0; i < 2; ++i)
-		mVertices[i] = new float[2];
+	mVertices = new float*[3];
+	for (int i = 0; i < 3; ++i)
+		mVertices[i] = new float[3];
 
 	mType = TRIANGLE;
 }
@@ -72,8 +72,8 @@ void CTriangle::display() {
 	int y0 = mVertices[0][1];
 	int x1 = mVertices[1][0];
 	int y1 = mVertices[1][1];
-	int x2 = 0;
-	int y2 = 0;
+	int x2 = mVertices[2][0];
+	int y2 = mVertices[2][1];
 
 	if (y0 > y1)swap(x0, x1), swap(y0, y1);
 	if (y0 > y2)swap(x0, x2), swap(y0, y2);

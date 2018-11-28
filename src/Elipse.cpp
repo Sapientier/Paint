@@ -20,6 +20,10 @@ CElipse::~CElipse()
 void CElipse::display() {
 	CLine linea;
 	CPoint punto;
+	float r, g, b2;
+	r = getColor()[0];
+	g = getColor()[1];
+	b2 = getColor()[2];
 	linea.setColor(getColor()[0], getColor()[1], getColor()[2]);
 	punto.setColor(getColor()[0], getColor()[1], getColor()[2]);
 

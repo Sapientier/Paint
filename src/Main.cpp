@@ -15,16 +15,138 @@ GLFWwindow *gWindow;
 int gWidth, gHeight;
 int picked;
 bool gPress;
-int drawn = 0;
+bool selecting = false;
+bool BoxExist = false;
 CUserInterface * userInterface;
 vector <CFigure *> figures;
 FigureType figureSelected;
 CTriangle *triangle = new CTriangle();
+CQuad *boundBox = new CQuad();
+int trianCont = 0;
+
+void save() {
+	char filename[MAX_PATH];
+	int x0, y0, x1, y1, x2, y2;
+	float r, g, b;
+	OPENFILENAME ofn;
+	ZeroMemory(&filename, sizeof(filename));
+	ZeroMemory(&ofn, sizeof(ofn));
+	ofn.lStructSize = sizeof(ofn);
+	ofn.hwndOwner = NULL;
+	ofn.lpstrFilter = "Archivos json\0*.json\0";
+	ofn.lpstrFile = filename;
+	ofn.nMaxFile = MAX_PATH;
+	ofn.lpstrTitle = "Especifique la ruta para guardar el archivo.";
+	ofn.Flags = OFN_DONTADDTORECENT | OFN_FILEMUSTEXIST;
+	if (GetSaveFileName(&ofn)) {
+		string fileToSave = string(ofn.lpstrFile) + ".json";
+		ofstream file(fileToSave, std::ofstream::out);
+		file << figures.size() << "\n";
+		for (int i = 0; i < figures.size(); i++) {
+			float *v1 = figures[i]->getVertex(0);
+			float *v2 = figures[i]->getVertex(1);
+			x0 = v1[0];
+			y0 = v1[1];
+			x1 = v2[0];
+			y1 = v2[1];
+			r = figures[i]->getColor()[0];
+			g = figures[i]->getColor()[1];
+			b = figures[i]->getColor()[2];
+			if (figures[i]->getType() == TRIANGLE) {
+				float *v3 = figures[i]->getVertex(2);
+				x2 = v3[0];
+				y2 = v3[1];
+				file << figures[i]->getType() << " " << r << " " << g << " " << b << " " << x0 << " " << y0 << " " << x1 << " " << y1 << " " << x2 << " " << y2 << "\n";
+			}
+			else if (figures[i]->getType() == QUAD) {
+				if (figures[i]->getBox() == 0) {
+					file << figures[i]->getType() << " " << r << " " << g << " " << b << " " << x0 << " " << y0 << " " << x1 << " " << y1 << "\n";
+				}
+			}
+			else {
+				file << figures[i]->getType() << " " << r << " " << g << " " << b << " " << x0 << " " << y0 << " " << x1 << " " << y1 << "\n";
+			}
+		}
+	}
+}
+
+void load() {
+	char filename[MAX_PATH];
+	int tipo;
+	int x0, y0, x1, y1, x2, y2;
+	string color;
+	float r, g, b;
+	OPENFILENAME ofn;
+	ZeroMemory(&filename, sizeof(filename));
+	ZeroMemory(&ofn, sizeof(ofn));
+	ofn.lStructSize = sizeof(ofn);
+	ofn.hwndOwner = NULL;
+	ofn.lpstrFilter = "Archivos json\0*.json\0";
+	ofn.lpstrFile = filename;
+	ofn.nMaxFile = MAX_PATH;
+	ofn.lpstrTitle = "Seleccione un archivo para cargar.";
+	ofn.Flags = OFN_DONTADDTORECENT | OFN_FILEMUSTEXIST;
+	if (GetOpenFileNameA(&ofn)) {
+		while (!figures.empty()) figures.pop_back();
+		int nFigures;
+		ifstream file(filename, std::ifstream::in);
+		file >> nFigures;
+		for (int i = 0; i < nFigures; i++) {
+			file >> tipo;
+			if (tipo == 1) {
+				CLine *line = new CLine();
+				file >> r >> g >> b >> x0 >> y0 >> x1 >> y1;
+				line->setColor(r, g, b);
+				line->setVertex(0, x0, y0);
+				line->setVertex(1, x1, y1);
+				figures.push_back(line);
+			} 
+			else if (tipo == 2) {
+				CQuad *quad = new CQuad();
+				file >> r >> g >> b >> x0 >> y0 >> x1 >> y1;
+				quad->setColor(r, g, b);
+				quad->setVertex(0, x0, y0);
+				quad->setVertex(1, x1, y1);
+				figures.push_back(quad);
+			}
+			else if (tipo == 3) {
+				CCircle *circle = new CCircle();
+				file >> r >> g >> b >> x0 >> y0 >> x1 >> y1;
+				circle->setColor(r, g, b);
+				circle->setVertex(0, x0, y0);
+				circle->setVertex(1, x1, y1);
+				figures.push_back(circle);
+			}
+			else if (tipo == 4) {
+				CElipse *elipse = new CElipse();
+				file >> r >> g >> b >> x0 >> y0 >> x1 >> y1;
+				elipse->setColor(r, g, b);
+				elipse->setVertex(0, x0, y0);
+				elipse->setVertex(1, x1, y1);
+				figures.push_back(elipse);
+			}
+			else if (tipo == 5) {
+				CTriangle *triangle = new CTriangle();
+				file >> r >> g >> b >> x0 >> y0 >> x1 >> y1 >> x2 >> y2;
+				triangle->setColor(r, g, b);
+				triangle->setVertex(0, x0, y0);
+				triangle->setVertex(1, x1, y1);
+				triangle->setVertex(2, x2, y2);
+				figures.push_back(triangle);
+			}
+		}
+	}
+}
 
 void pick(int x, int y)
 {
 	picked = -1;
 	userInterface->hide();
+
+	if (!BoxExist) {
+		figures.push_back(boundBox);
+		BoxExist = true;
+	}
 
 	for (unsigned int i = 0; i < figures.size(); i++)
 	{
@@ -41,6 +163,11 @@ void pick(int x, int y)
 		min[0] = MIN(v1[0], v2[0]);
 		min[1] = MIN(v1[1], v2[1]);
 
+		if (selecting) {
+			boundBox->setBox(3);
+			selecting = false;
+		}
+
 		if (x >= min[0] && x <= max[0] && y >= min[1] && y <= max[1])
 		{
 			picked = i;
@@ -50,16 +177,69 @@ void pick(int x, int y)
 
 			int type = figures[picked]->getType();
 
-			if (type == LINE)
+			if (type == LINE) {
 				userInterface->setFigureType("Line");
-			else if(type == QUAD)
+
+				boundBox->setVertex(0, v1[0], v1[1]);
+				boundBox->setVertex(1, v2[0], v2[1]);
+				boundBox->setBox(1);
+
+				selecting = true;
+			}
+			else if (type == QUAD) {
 				userInterface->setFigureType("Quad");
-			else if (type == CIRCLE)
+				int x0 = v1[0] - 5, x1 = v2[0] + 5;
+				int y0 = v1[1] + 5, y1 = v2[1] - 5;
+
+				boundBox->setVertex(0, x0, y0);
+				boundBox->setVertex(1, x1, y1);
+				boundBox->setBox(1);
+
+				selecting = true;
+			}
+			else if (type == CIRCLE) {
 				userInterface->setFigureType("Circle");
-			else if (type == ELIPSE)
+				int radio = fabsf(v2[0] - v1[0]);
+
+				boundBox->setVertex(0, v1[0] - radio, v1[1] - radio);
+				boundBox->setVertex(1, v1[0] + radio, v1[1] + radio);
+				boundBox->setBox(1);
+
+				selecting = true;
+			}
+				
+			else if (type == ELIPSE) {
 				userInterface->setFigureType("Elipse");
-			else if (type == TRIANGLE)
+				int radioX = fabsf(v2[0] - v1[0]);
+				int radioY = fabsf(v2[1] - v1[1]);
+
+				boundBox->setVertex(0, v1[0] - radioX, v1[1] - radioY);
+				boundBox->setVertex(1, v1[0] + radioX, v1[1] + radioY);
+				boundBox->setBox(1);
+
+				selecting = true;
+			}
+				
+			else if (type == TRIANGLE) {
 				userInterface->setFigureType("Triangle");
+				float *v3 = figures[i]->getVertex(2);
+				int xMin, yMin, xMax, yMax;
+
+				xMin = min[0];
+				xMin = MIN(xMin, v3[0]);
+				yMin = min[1];
+				yMin = MIN(yMin, v3[1]);
+				xMax = max[0];
+				xMax = MAX(xMax, v3[0]);
+				yMax = max[1];
+				yMax = MAX(yMax, v3[1]);
+
+				boundBox->setVertex(0, xMin, yMin);
+				boundBox->setVertex(1, xMax, yMax);
+				boundBox->setBox(1);
+
+				selecting = true;
+			}
 
 			break;
 		}
@@ -70,7 +250,11 @@ void updateUserInterface()
 {
 	if (picked > -1)
 	{
-		float * color = userInterface->getFigureColor();
+		float *color = userInterface->getFigureColor();
+		float r, g, b;
+		r = color[0];
+		g = color[1];
+		b = color[2];
 		figures[picked]->setColor(color[0], color[1], color[2]);
 	}
 }
@@ -115,6 +299,14 @@ void keyInput(GLFWwindow *window, int key, int scancode, int action, int mods)
 		case GLFW_KEY_P:
 			figureSelected = NONE;
 			userInterface->hide();
+			break;
+
+		case GLFW_KEY_S:
+			save();
+			break;
+
+		case GLFW_KEY_G:
+			load();
 			break;
 
 		case GLFW_KEY_L:
@@ -198,11 +390,20 @@ void mouseButton(GLFWwindow* window, int button, int action, int mods)
 		}
 		else if (figureSelected == TRIANGLE)
 		{
-			triangle->setVertex(0, ax, ay);
-			triangle->setVertex(1, ax, ay);
-			figures.push_back(triangle);
-
-			gPress = true;
+			if (trianCont == 0) {
+				triangle->setVertex(0, ax, ay);
+				trianCont++;
+			}
+			else if (trianCont == 1) {
+				triangle->setVertex(1, ax, ay);
+				trianCont++;
+			}
+			else if (trianCont == 2) {
+				triangle->setVertex(2, ax, ay);
+				figures.push_back(triangle);
+				trianCont = 0;
+				triangle = new CTriangle();
+			}
 		}
 	}
 
@@ -275,7 +476,6 @@ bool initUserInterface()
 		return false;
 
 	userInterface = CUserInterface::Instance();
-
 	return true;
 }
 

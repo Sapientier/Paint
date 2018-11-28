@@ -1,7 +1,11 @@
 #pragma once
 #include "../headers/AntTweakBar.h"
+#include "Windows.h"
 #include <iostream>
 #include <string>
+#include <vector>
+#include <fstream>
+using namespace std;
 
 using std::string;
 
