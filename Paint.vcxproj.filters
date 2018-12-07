@@ -38,6 +38,9 @@
     <ClInclude Include="src\Triangle.h">
       <Filter>Archivos de encabezado</Filter>
     </ClInclude>
+    <ClInclude Include="src\Curve.h">
+      <Filter>Archivos de encabezado</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\Figure.cpp">
@@ -65,6 +68,9 @@
       <Filter>Archivos de origen</Filter>
     </ClCompile>
     <ClCompile Include="src\Triangle.cpp">
+      <Filter>Archivos de origen</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Curve.cpp">
       <Filter>Archivos de origen</Filter>
     </ClCompile>
   </ItemGroup>

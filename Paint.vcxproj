@@ -127,6 +127,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="src\Circle.h" />
+    <ClInclude Include="src\Curve.h" />
     <ClInclude Include="src\Elipse.h" />
     <ClInclude Include="src\Figure.h" />
     <ClInclude Include="src\Line.h" />
@@ -138,6 +139,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\Circle.cpp" />
+    <ClCompile Include="src\Curve.cpp" />
     <ClCompile Include="src\Elipse.cpp" />
     <ClCompile Include="src\Figure.cpp" />
     <ClCompile Include="src\Line.cpp" />

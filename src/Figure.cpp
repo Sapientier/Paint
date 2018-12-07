@@ -23,6 +23,14 @@ void CFigure::setColor(float r, float g, float b)
 	mColor[2] = b;
 }
 
+void CFigure::setBezier(bool valor) {
+	selectingPoint = valor;
+}
+
+bool CFigure::getBezier() {
+	return selectingPoint;
+}
+
 void CFigure::setBox(int a)
 {
 	box = a;

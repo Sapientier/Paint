@@ -2,26 +2,31 @@
 //CI 24042974
 
 #include "Main.h"
+#include "Point.h"
 #include "Line.h"
 #include "Quad.h"
 #include "Circle.h"
 #include "Elipse.h"
 #include "Triangle.h"
+#include "Curve.h"
 #include "UserInterface.h"
 
 using std::vector;
 
 GLFWwindow *gWindow;
 int gWidth, gHeight;
-int picked;
+int picked, boxPos = 0, contP = 0;
+int type;
 bool gPress;
 bool selecting = false;
 bool BoxExist = false;
 CUserInterface * userInterface;
+vector <CPoint *> arrayPoints;
 vector <CFigure *> figures;
 FigureType figureSelected;
 CTriangle *triangle = new CTriangle();
 CQuad *boundBox = new CQuad();
+CCurve *curve = new CCurve();
 int trianCont = 0;
 
 void save() {
@@ -52,19 +57,19 @@ void save() {
 			r = figures[i]->getColor()[0];
 			g = figures[i]->getColor()[1];
 			b = figures[i]->getColor()[2];
-			if (figures[i]->getType() == TRIANGLE) {
-				float *v3 = figures[i]->getVertex(2);
-				x2 = v3[0];
-				y2 = v3[1];
-				file << figures[i]->getType() << " " << r << " " << g << " " << b << " " << x0 << " " << y0 << " " << x1 << " " << y1 << " " << x2 << " " << y2 << "\n";
-			}
-			else if (figures[i]->getType() == QUAD) {
-				if (figures[i]->getBox() == 0) {
+			if (figures[i]->getBox() == 0 && figures[i]->getType() != CURVE) {
+				if (figures[i]->getType() == TRIANGLE) {
+					float *v3 = figures[i]->getVertex(2);
+					x2 = v3[0];
+					y2 = v3[1];
+					file << figures[i]->getType() << " " << r << " " << g << " " << b << " " << x0 << " " << y0 << " " << x1 << " " << y1 << " " << x2 << " " << y2 << "\n";
+				}
+				else if (figures[i]->getType() == PUNTO) {
+					file << figures[i]->getType() << " " << r << " " << g << " " << b << " " << x0 << " " << y0 << "\n";
+				}
+				else {
 					file << figures[i]->getType() << " " << r << " " << g << " " << b << " " << x0 << " " << y0 << " " << x1 << " " << y1 << "\n";
 				}
-			}
-			else {
-				file << figures[i]->getType() << " " << r << " " << g << " " << b << " " << x0 << " " << y0 << " " << x1 << " " << y1 << "\n";
 			}
 		}
 	}
@@ -73,9 +78,10 @@ void save() {
 void load() {
 	char filename[MAX_PATH];
 	int tipo;
+	bool isBezier = false;
 	int x0, y0, x1, y1, x2, y2;
 	string color;
-	float r, g, b;
+	float r, g, b, s;
 	OPENFILENAME ofn;
 	ZeroMemory(&filename, sizeof(filename));
 	ZeroMemory(&ofn, sizeof(ofn));
@@ -100,7 +106,7 @@ void load() {
 				line->setVertex(0, x0, y0);
 				line->setVertex(1, x1, y1);
 				figures.push_back(line);
-			} 
+			}
 			else if (tipo == 2) {
 				CQuad *quad = new CQuad();
 				file >> r >> g >> b >> x0 >> y0 >> x1 >> y1;
@@ -134,6 +140,24 @@ void load() {
 				triangle->setVertex(2, x2, y2);
 				figures.push_back(triangle);
 			}
+			else if (tipo == 6) {
+				isBezier = true;
+				CPoint *point = new CPoint();
+				file >> r >> g >> b >> x0 >> y0;
+				point->setColor(r, g, b);
+				point->setBezier(true);
+				point->setVertex(0, x0, y0);
+				figures.push_back(point);
+				arrayPoints.push_back(point);
+				contP++;
+			}
+		}
+	}
+	if (isBezier) {
+		if (arrayPoints.size() != 0 && contP > 1) {
+			curve->setPoints(arrayPoints);
+			curve->setColor(0, 1, 1);
+			figures.push_back(curve);
 		}
 	}
 }
@@ -146,6 +170,7 @@ void pick(int x, int y)
 	if (!BoxExist) {
 		figures.push_back(boundBox);
 		BoxExist = true;
+		boxPos = figures.size() - 1;
 	}
 
 	for (unsigned int i = 0; i < figures.size(); i++)
@@ -175,7 +200,12 @@ void pick(int x, int y)
 			userInterface->setFigureColor(figures[picked]->getColor());
 			userInterface->show();
 
-			int type = figures[picked]->getType();
+			if (picked != boxPos) {
+				type = figures[picked]->getType();
+			}
+			else {
+				type = 999;
+			}
 
 			if (type == LINE) {
 				userInterface->setFigureType("Line");
@@ -207,7 +237,7 @@ void pick(int x, int y)
 
 				selecting = true;
 			}
-				
+
 			else if (type == ELIPSE) {
 				userInterface->setFigureType("Elipse");
 				int radioX = fabsf(v2[0] - v1[0]);
@@ -219,7 +249,7 @@ void pick(int x, int y)
 
 				selecting = true;
 			}
-				
+
 			else if (type == TRIANGLE) {
 				userInterface->setFigureType("Triangle");
 				float *v3 = figures[i]->getVertex(2);
@@ -241,8 +271,16 @@ void pick(int x, int y)
 				selecting = true;
 			}
 
+			else if (type == PUNTO) {
+				userInterface->setFigureType("Bezier");
+			}
+
 			break;
 		}
+	}
+	if (picked == -1) {
+		figures.erase(figures.begin() + boxPos);
+		BoxExist = false;
 	}
 }
 
@@ -251,10 +289,6 @@ void updateUserInterface()
 	if (picked > -1)
 	{
 		float *color = userInterface->getFigureColor();
-		float r, g, b;
-		r = color[0];
-		g = color[1];
-		b = color[2];
 		figures[picked]->setColor(color[0], color[1], color[2]);
 	}
 }
@@ -266,6 +300,7 @@ void display()
 
 	for (unsigned int i = 0; i < figures.size(); i++)
 		figures[i]->display();
+
 }
 
 void reshape(GLFWwindow *window, int width, int height)
@@ -298,6 +333,9 @@ void keyInput(GLFWwindow *window, int key, int scancode, int action, int mods)
 
 		case GLFW_KEY_P:
 			figureSelected = NONE;
+			contP = 0;
+			curve = new CCurve();
+			arrayPoints.clear();
 			userInterface->hide();
 			break;
 
@@ -305,33 +343,71 @@ void keyInput(GLFWwindow *window, int key, int scancode, int action, int mods)
 			save();
 			break;
 
-		case GLFW_KEY_G:
+		case GLFW_KEY_D:
 			load();
 			break;
 
 		case GLFW_KEY_L:
 			figureSelected = LINE;
+			contP = 0;
+			curve = new CCurve();
+			arrayPoints.clear();
 			userInterface->hide();
 			break;
 
 		case GLFW_KEY_Q:
 			figureSelected = QUAD;
+			contP = 0;
+			curve = new CCurve();
+			arrayPoints.clear();
 			userInterface->hide();
 			break;
 
 		case GLFW_KEY_C:
 			figureSelected = CIRCLE;
+			contP = 0;
+			curve = new CCurve();
+			arrayPoints.clear();
 			userInterface->hide();
 			break;
 
 		case GLFW_KEY_E:
 			figureSelected = ELIPSE;
+			contP = 0;
+			curve = new CCurve();
+			arrayPoints.clear();
 			userInterface->hide();
 			break;
 
 		case GLFW_KEY_T:
 			figureSelected = TRIANGLE;
+			contP = 0;
+			curve = new CCurve();
+			arrayPoints.clear();
 			userInterface->hide();
+			break;
+
+		case GLFW_KEY_B:
+			figureSelected = CURVE;
+			contP = 0;
+			curve = new CCurve();
+			arrayPoints.clear();
+			userInterface->hide();
+			break;
+
+		case GLFW_KEY_DELETE:
+			if (figureSelected == NONE && picked != -1) {
+				figures.erase(figures.begin() + boxPos);
+				figures.erase(figures.begin() + picked);
+				BoxExist = false;
+			}
+			break;
+
+		case GLFW_KEY_Z:
+			if (figureSelected == NONE && picked != -1) {
+				swap(figures[picked], figures.back());
+				BoxExist = false;
+			}
 			break;
 		}
 	}
@@ -350,15 +426,15 @@ void mouseButton(GLFWwindow* window, int button, int action, int mods)
 		float ax = float(x);
 		float ay = gHeight - float(y);
 
-		if (figureSelected == NONE)
+		if (figureSelected == NONE) {
 			pick(int(ax), int(ay));
+		}
 		else if (figureSelected == LINE)
 		{
 			CLine *line = new CLine();
 			line->setVertex(0, ax, ay);
 			line->setVertex(1, ax, ay);
 			figures.push_back(line);
-
 			gPress = true;
 		}
 		else if (figureSelected == QUAD)
@@ -367,7 +443,6 @@ void mouseButton(GLFWwindow* window, int button, int action, int mods)
 			quad->setVertex(0, ax, ay);
 			quad->setVertex(1, ax, ay);
 			figures.push_back(quad);
-
 			gPress = true;
 		}
 		else if (figureSelected == CIRCLE)
@@ -376,7 +451,6 @@ void mouseButton(GLFWwindow* window, int button, int action, int mods)
 			circle->setVertex(0, ax, ay);
 			circle->setVertex(1, ax, ay);
 			figures.push_back(circle);
-
 			gPress = true;
 		}
 		else if (figureSelected == ELIPSE)
@@ -385,7 +459,6 @@ void mouseButton(GLFWwindow* window, int button, int action, int mods)
 			elipse->setVertex(0, ax, ay);
 			elipse->setVertex(1, ax, ay);
 			figures.push_back(elipse);
-
 			gPress = true;
 		}
 		else if (figureSelected == TRIANGLE)
@@ -403,6 +476,28 @@ void mouseButton(GLFWwindow* window, int button, int action, int mods)
 				figures.push_back(triangle);
 				trianCont = 0;
 				triangle = new CTriangle();
+			}
+		}
+		else if (figureSelected == CURVE)
+		{
+			CPoint *point = new CPoint();
+			point->setVertex(0, ax, ay);
+			point->setBezier(true);
+			figures.push_back(point);
+			arrayPoints.push_back(point);
+			contP++;
+			if (arrayPoints.size() != 0 && contP > 1) {
+				CLine *line = new CLine();
+				float *v1 = arrayPoints[contP - 2]->getVertex(0);
+				float *v2 = arrayPoints[contP - 1]->getVertex(0);
+				line->setVertex(0, v2[0], v2[1]);
+				line->setVertex(1, v1[0], v1[1]);
+				figures.push_back(line);
+				curve->setPoints(arrayPoints);
+				curve->setColor(0, 1, 1);
+				if (contP == 2) {
+					figures.push_back(curve);
+				}
 			}
 		}
 	}

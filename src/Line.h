@@ -1,5 +1,4 @@
 #pragma once
-#include "Figure.h"
 #include "Point.h"
 
 class CLine : public CFigure
